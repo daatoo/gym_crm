@@ -1,110 +1,173 @@
 package service;
 
-import com.gymcrm.dao.impl.TraineeDaoImpl;
+import com.gymcrm.dto.CreateTraineeDto;
+import com.gymcrm.dto.CreateUserDto;
+import com.gymcrm.dto.PasswordChangeDto;
+import com.gymcrm.dto.TraineeDto;
 import com.gymcrm.entity.Trainee;
+import com.gymcrm.entity.Trainer;
+import com.gymcrm.entity.User;
+import com.gymcrm.mapper.TraineeMapper;
+import com.gymcrm.repository.TraineeRepository;
+import com.gymcrm.repository.TrainerRepository;
+import com.gymcrm.repository.TrainingRepository;
+import com.gymcrm.service.UserService;
 import com.gymcrm.service.impl.TraineeServiceImpl;
-import com.gymcrm.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 
-import java.util.Optional;
+import java.time.LocalDate;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-public class TraineeServiceTest {
+class TraineeServiceTest {
 
-    @Mock
-    private TraineeDaoImpl traineeDao;
-
-    @Mock
-    private UserServiceImpl userService;
+    @Mock private TraineeRepository traineeRepository;
+    @Mock private TraineeMapper traineeMapper;
+    @Mock private TrainerRepository trainerRepository;
+    @Mock private TrainingRepository trainingRepository;
+    @Mock private UserService userService;
 
     @InjectMocks
     private TraineeServiceImpl traineeService;
 
-    private Trainee trainee;
-
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        trainee = new Trainee();
-        trainee.setFirstName("Liam");
-        trainee.setLastName("Anderson");
-        trainee.setAddress("456 Elm Street");
-        trainee.setDateOfBirth("1998-07-15");
-        trainee.setUserId(1);
-        trainee.setUserName("Liam.Anderson");
-        trainee.setPassword("securePass123");
     }
 
     @Test
-    void testCreateTrainee_Success() {
-        when(userService.getTraineeId()).thenReturn(1);
-        when(userService.generateUserName("Liam", "Anderson")).thenReturn("Liam.Anderson");
-        when(userService.generatePassword()).thenReturn("securePass123");
-        when(traineeDao.createTrainee(any(Trainee.class))).thenReturn(trainee);
+    void createTrainee_shouldCreateAndReturnDto() {
+        CreateUserDto userDto = new CreateUserDto("John", "Doe");
+        CreateTraineeDto dto = new CreateTraineeDto();
+        dto.setDateOfBirth(LocalDate.of(1990, 1, 1));
+        dto.setAddress("Address");
+        dto.setUser(userDto);
 
-        Trainee createdTrainee = traineeService.createTrainee(trainee);
+        User user = new User("John", "Doe", "jdoe", "secret123");
+        Trainee trainee = new Trainee(dto.getDateOfBirth(), dto.getAddress(), user);
+        TraineeDto expected = new TraineeDto();
 
-        assertNotNull(createdTrainee);
-        assertEquals(trainee.getFirstName(), createdTrainee.getFirstName());
-        assertEquals(trainee.getLastName(), createdTrainee.getLastName());
-        assertEquals(trainee.getAddress(), createdTrainee.getAddress());
-        assertEquals(trainee.getDateOfBirth(), createdTrainee.getDateOfBirth());
-        assertEquals("Liam.Anderson", createdTrainee.getUserName());
-        assertEquals("securePass123", createdTrainee.getPassword());
+        when(userService.createUser("John", "Doe")).thenReturn(user);
+        when(traineeRepository.save(any())).thenReturn(trainee);
+        when(traineeMapper.toDto(trainee)).thenReturn(expected);
 
-        verify(userService, times(1)).getTraineeId();
-        verify(userService, times(1)).generateUserName("Liam", "Anderson");
-        verify(userService, times(1)).generatePassword();
-        verify(traineeDao, times(1)).createTrainee(any());
+        TraineeDto result = traineeService.createTrainee(dto);
+        assertEquals(expected, result);
     }
 
     @Test
-    void testGetTrainee_Found() {
-        when(traineeDao.getTrainee(trainee.getUserId())).thenReturn(Optional.of(trainee));
+    void getByUsername_shouldReturnDtoWhenAuthenticated() {
+        String username = "jdoe";
+        String password = "secret123";
+        Trainee trainee = new Trainee();
+        TraineeDto dto = new TraineeDto();
 
-        Optional<Trainee> retrievedTrainee = traineeService.getTrainee(trainee.getUserId());
+        User user = new User("John", "Doe", "jdoe", "secret123");
 
-        assertTrue(retrievedTrainee.isPresent());
-        assertEquals(trainee.getFirstName(), retrievedTrainee.get().getFirstName());
+        when(userService.authenticate(username, password)).thenReturn(user);
+        when(traineeRepository.findByUsername(username)).thenReturn(Optional.of(trainee));
+        when(traineeMapper.toDto(trainee)).thenReturn(dto);
 
-        verify(traineeDao, times(1)).getTrainee(trainee.getUserId());
+        TraineeDto result = traineeService.getByUsername(username, password);
+        assertEquals(dto, result);
     }
 
     @Test
-    void testGetTrainee_NotFound_ReturnsEmpty() {
-        when(traineeDao.getTrainee(100)).thenReturn(Optional.empty());
-
-        Optional<Trainee> retrievedTrainee = traineeService.getTrainee(100);
-
-        assertTrue(retrievedTrainee.isEmpty());
-        verify(traineeDao, times(1)).getTrainee(100);
+    void changePassword_shouldDelegateToUserService() {
+        PasswordChangeDto dto = new PasswordChangeDto("jdoe", "oldPass", "newPass");
+        traineeService.changePassword(dto);
+        verify(userService).changePassword("jdoe", "oldPass", "newPass");
     }
 
     @Test
-    void testUpdateTrainee_Success() {
-        when(traineeDao.updateTrainer(trainee)).thenReturn(trainee);
+    void updateTrainee_shouldUpdateFieldsCorrectly() {
+        String username = "jdoe";
+        String password = "secret123";
 
-        Trainee updatedTrainee = traineeService.updateTrainee(trainee);
+        CreateUserDto userDto = new CreateUserDto("Updated", "Name");
+        CreateTraineeDto dto = new CreateTraineeDto();
+        dto.setDateOfBirth(LocalDate.of(2000, 2, 2));
+        dto.setAddress("New Address");
+        dto.setUser(userDto);
 
-        assertNotNull(updatedTrainee);
-        assertEquals(trainee.getAddress(), updatedTrainee.getAddress());
 
-        verify(traineeDao, times(1)).updateTrainer(trainee);
+
+        User user = new User("John", "Doe", "jdoe", "secret123");
+        Trainee trainee = new Trainee(LocalDate.of(1990, 1, 1), "Old Address", user);
+
+        when(traineeRepository.findByUsername(username)).thenReturn(Optional.of(trainee));
+
+        traineeService.updateTrainee(username, dto, password);
+
+        assertEquals("Updated", trainee.getUser().getFirstName());
+        assertEquals("Name", trainee.getUser().getLastName());
+        assertEquals("New Address", trainee.getAddress());
+        assertEquals(LocalDate.of(2000, 2, 2), trainee.getDateOfBirth());
+
+        verify(traineeRepository).save(trainee);
     }
 
     @Test
-    void testDeleteTrainee_Success() {
-        when(traineeDao.deleteTrainee(trainee.getUserId())).thenReturn(true);
+    void toggleActive_shouldAuthenticateAndToggle() {
+        String username = "jdoe";
+        String password = "secret123";
 
-        boolean isDeleted = traineeService.deleteTrainee(trainee.getUserId());
+        traineeService.toggleActive(username, password);
 
-        assertTrue(isDeleted);
-        verify(traineeDao, times(1)).deleteTrainee(trainee.getUserId());
+        verify(userService).authenticate(username, password);
+        verify(userService).toggleActive(username);
+    }
+
+    @Test
+    void deleteByUsername_shouldRemoveTraineeAndTrainings() {
+        String username = "jdoe";
+        String password = "secret123";
+        User user = new User("John", "Doe", "jdoe", "secret123");
+        Trainee trainee = new Trainee(LocalDate.of(1990, 1, 1), "Address", user);
+
+        when(traineeRepository.findByUsername(username)).thenReturn(Optional.of(trainee));
+
+        traineeService.deleteByUsername(username, password);
+
+        verify(trainingRepository).deleteAllByTrainee(trainee);
+        verify(traineeRepository).delete(trainee);
+    }
+
+    @Test
+    void updateAssignedTrainers_shouldSetNewTrainers() {
+        String username = "jdoe";
+        List<Long> ids = List.of(1L, 2L);
+        User user = new User("John", "Doe", "jdoe", "secret123");
+        Trainee trainee = new Trainee(LocalDate.of(1990, 1, 1), "Address", user);
+        List<Trainer> trainers = List.of(new Trainer(), new Trainer());
+
+        when(traineeRepository.findByUsername(username)).thenReturn(Optional.of(trainee));
+        when(trainerRepository.findAllById(ids)).thenReturn(trainers);
+
+        traineeService.updateAssignedTrainers(username, ids);
+
+        assertEquals(trainers, trainee.getTrainers());
+        verify(traineeRepository).save(trainee);
+    }
+
+    @Test
+    void updateTrainersList_shouldUpdateIfAllValid() {
+        String username = "jdoe";
+        List<Long> ids = List.of(1L, 2L);
+        User user = new User("John", "Doe", "jdoe", "secret123");
+        Trainee trainee = new Trainee(LocalDate.of(1990, 1, 1), "Address", user);
+        List<Trainer> trainers = List.of(new Trainer(), new Trainer());
+
+        when(traineeRepository.findByUsername(username)).thenReturn(Optional.of(trainee));
+        when(trainerRepository.findAllById(ids)).thenReturn(trainers);
+
+        traineeService.updateTrainersList(username, ids);
+
+        assertEquals(trainers, trainee.getTrainers());
+        verify(traineeRepository).save(trainee);
     }
 }

@@ -1,23 +1,26 @@
 package service;
 
-import com.gymcrm.dao.impl.TraineeDaoImpl;
-import com.gymcrm.dao.impl.TrainerDaoImpl;
+import com.gymcrm.entity.User;
+import com.gymcrm.repository.UserRepository;
+import com.gymcrm.service.UserService;
 import com.gymcrm.service.impl.UserServiceImpl;
+import com.gymcrm.util.UsernamePasswordGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import org.mockito.*;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-public class UserServiceTest {
+class UserServiceTest {
 
-    @Mock
-    private TraineeDaoImpl traineeDao;
-
-    @Mock
-    private TrainerDaoImpl trainerDao;
+    @Mock private UserRepository userRepository;
+    @Mock private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -25,39 +28,109 @@ public class UserServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        userService = new UserServiceImpl(trainerDao, traineeDao);
     }
 
     @Test
-    void testGenerateUserName_Unique() {
-        String username = userService.generateUserName("Unique", "Username");
-        assertEquals("Unique.Username", username);
+    void createUser_shouldGenerateAndSaveUser() {
+        when(userRepository.findAll()).thenReturn(List.of());
+        when(passwordEncoder.encode(any())).thenReturn("encodedPass");
+
+        User result = userService.createUser("John", "Doe");
+
+        assertEquals("John", result.getFirstName());
+        assertEquals("Doe", result.getLastName());
+        assertNotNull(result.getUserName());
+        assertEquals("encodedPass", result.getPassword());
+        verify(userRepository).save(any(User.class));
     }
 
     @Test
-    void testAlreadyUsed_NotExists() {
-        assertFalse(userService.alreadyUsed("Non.Existing"));
+    void changePassword_shouldUpdatePasswordIfOldMatches() {
+        User user = new User("John", "Doe", "jdoe", "oldEncoded");
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old", "oldEncoded")).thenReturn(true);
+        when(passwordEncoder.encode("new")).thenReturn("newEncoded");
+
+        userService.changePassword("jdoe", "old", "new");
+
+        assertEquals("newEncoded", user.getPassword());
+        verify(userRepository).save(user);
     }
 
     @Test
-    void testGeneratePassword_Length() {
-        String password = userService.generatePassword();
-        assertEquals(10, password.length());
+    void changePassword_shouldThrowIfOldDoesNotMatch() {
+        User user = new User("John", "Doe", "jdoe", "oldEncoded");
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongOld", "oldEncoded")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                userService.changePassword("jdoe", "wrongOld", "new")
+        );
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    void testGetTrainerId_Increments() {
-        int firstId = userService.getTrainerId();
-        int secondId = userService.getTrainerId();
+    void toggleActive_shouldFlipStatus() {
+        User user = new User("John", "Doe", "jdoe", "pass");
+        user.setActive(true);
 
-        assertEquals(firstId + 1, secondId);
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.of(user));
+
+        userService.toggleActive("jdoe");
+
+        assertFalse(user.isActive());
+        verify(userRepository).save(user);
     }
 
     @Test
-    void testGetTraineeId_ShouldReturnIncrementingValues() {
-        int firstId = userService.getTraineeId();
-        int secondId = userService.getTraineeId();
+    void getByUsername_shouldReturnUser() {
+        User user = new User("John", "Doe", "jdoe", "pass");
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.of(user));
 
-        assertEquals(firstId + 1, secondId);
+        User result = userService.getByUsername("jdoe");
+
+        assertEquals("jdoe", result.getUserName());
+    }
+
+    @Test
+    void getByUsername_shouldThrowIfNotFound() {
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () ->
+                userService.getByUsername("jdoe")
+        );
+    }
+
+    @Test
+    void authenticate_shouldReturnUserIfPasswordMatches() {
+        User user = new User("John", "Doe", "jdoe", "encodedPassword");
+
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "encodedPassword")).thenReturn(true); // Mock this!
+
+        User result = userService.authenticate("jdoe", "pass");
+
+        assertEquals(user, result);
+    }
+
+
+    @Test
+    void authenticate_shouldThrowIfUserNotFound() {
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () ->
+                userService.authenticate("jdoe", "pass")
+        );
+    }
+
+    @Test
+    void authenticate_shouldThrowIfPasswordWrong() {
+        User user = new User("John", "Doe", "jdoe", "correct");
+        when(userRepository.findByUsername("jdoe")).thenReturn(Optional.of(user));
+
+        assertThrows(RuntimeException.class, () ->
+                userService.authenticate("jdoe", "wrong")
+        );
     }
 }
