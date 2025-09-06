@@ -1,0 +1,16 @@
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/config/AppConfig.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/facade/Facade.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/entity/Trainee.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/entity/Training.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/App.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/entity/User.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/entity/Trainer.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/service/impl/UserService.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/service/impl/TrainingService.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/service/impl/TraineeService.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/dao/impl/TrainingDao.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/dao/impl/TrainerDao.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/data/PreLoader.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/service/impl/TrainerService.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/config/BeanStorage.java
+/home/david/Desktop/gym-crm/src/main/java/com/gymcrm/dao/impl/TraineeDao.java

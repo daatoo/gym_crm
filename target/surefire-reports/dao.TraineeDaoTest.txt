@@ -1,0 +1,16 @@
+-------------------------------------------------------------------------------
+Test set: dao.TraineeDaoTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 0.002 sec <<< FAILURE!
+dao.TraineeDaoTest.testGetTrainee_NotFound_ReturnsEmpty()  Time elapsed: 0.001 sec  <<< FAILURE!
+java.lang.NullPointerException: Cannot invoke "com.gymcrm.dao.impl.TraineeDao.getTrainee(int)" because "this.traineeDao" is null
+	at dao.TraineeDaoTest.testGetTrainee_NotFound_ReturnsEmpty(TraineeDaoTest.java:60)
+
+dao.TraineeDaoTest.testUpdateTrainee_Success()  Time elapsed: 0 sec  <<< FAILURE!
+java.lang.NullPointerException: Cannot invoke "com.gymcrm.dao.impl.TraineeDao.createTrainee(com.gymcrm.entity.Trainee)" because "this.traineeDao" is null
+	at dao.TraineeDaoTest.testUpdateTrainee_Success(TraineeDaoTest.java:68)
+
+dao.TraineeDaoTest.testDeleteTrainee_Success()  Time elapsed: 0 sec  <<< FAILURE!
+java.lang.NullPointerException: Cannot invoke "com.gymcrm.dao.impl.TraineeDao.createTrainee(com.gymcrm.entity.Trainee)" because "this.traineeDao" is null
+	at dao.TraineeDaoTest.testDeleteTrainee_Success(TraineeDaoTest.java:82)
+

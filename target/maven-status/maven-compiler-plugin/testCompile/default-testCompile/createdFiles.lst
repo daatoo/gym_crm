@@ -1,0 +1,8 @@
+facade/FacadeTest.class
+service/TraineeServiceTest.class
+dao/TraineeDaoTest.class
+dao/TrainerDaoTest.class
+service/UserServiceTest.class
+dao/TrainingDaoTest.class
+service/TrainerServiceTest.class
+service/TrainingServiceTest.class

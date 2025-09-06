@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------
+Test set: dao.TrainerDaoTest
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 0.001 sec <<< FAILURE!
+dao.TrainerDaoTest.testGetTrainer_NotFound_ReturnsEmpty()  Time elapsed: 0.001 sec  <<< FAILURE!
+java.lang.NullPointerException: Cannot invoke "com.gymcrm.dao.impl.TrainerDao.getTrainer(int)" because "this.trainerDao" is null
+	at dao.TrainerDaoTest.testGetTrainer_NotFound_ReturnsEmpty(TrainerDaoTest.java:54)
+
+dao.TrainerDaoTest.testUpdateTrainer_Success()  Time elapsed: 0 sec  <<< FAILURE!
+java.lang.NullPointerException: Cannot invoke "com.gymcrm.dao.impl.TrainerDao.createTrainer(com.gymcrm.entity.Trainer)" because "this.trainerDao" is null
+	at dao.TrainerDaoTest.testUpdateTrainer_Success(TrainerDaoTest.java:61)
+
