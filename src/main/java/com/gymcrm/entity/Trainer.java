@@ -1,37 +1,32 @@
 package com.gymcrm.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.Objects;
 
+@NoArgsConstructor
+@Data
 @Entity
 @Table(name = "trainer")
-@PrimaryKeyJoinColumn(name = "user_id")
-@Getter
-@Setter
-@NoArgsConstructor
-public class Trainer extends User{
+public class Trainer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "trainer_id")
+    @Column(name = "trainerid")
     private Long trainerId;
 
-
     @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "training_type_id", nullable = false)
-    private TrainingType Specialization;
-
+    @JoinColumn(name = "trainingtypeid", nullable = false)
+    private TrainingType specialization;
 
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "userid", nullable = false, unique = true)
     private User user;
 
     public Trainer(TrainingType specialization, User user) {
-        Specialization = specialization;
+        this.specialization = specialization;
         this.user = user;
     }
 
@@ -48,4 +43,3 @@ public class Trainer extends User{
         return Objects.hash(getTrainerId());
     }
 }
-

@@ -3,8 +3,6 @@ package com.gymcrm.service;
 import com.gymcrm.dto.training.TrainingAddDto;
 import com.gymcrm.dto.training.TrainingCreateDto;
 import com.gymcrm.dto.training.TrainingDto;
-import com.gymcrm.entity.Training;
-
 
 import java.time.LocalDate;
 import java.util.List;

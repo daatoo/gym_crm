@@ -15,6 +15,7 @@ import com.gymcrm.repository.TrainingRepository;
 import com.gymcrm.repository.UserRepository;
 import com.gymcrm.service.TraineeService;
 import com.gymcrm.service.UserService;
+import com.gymcrm.util.UsernamePasswordGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,20 +39,30 @@ public class TraineeServiceImpl implements TraineeService {
     public TraineeCredentialsDto registerWithCredentials(TraineeCreateDto dto) {
         log.info("Registering trainee: {} {}", dto.getUser().getFirstName(), dto.getUser().getLastName());
 
+        // Check if already a trainer
+        String attemptedUsername = UsernamePasswordGenerator.generateStaticUsername(
+                dto.getUser().getFirstName(), dto.getUser().getLastName());
+
+        if (trainerRepository.existsByUser_Username(attemptedUsername)) {
+            log.warn("User already registered as a trainer.");
+            throw new IllegalStateException("User already registered as a trainer.");
+        }
+
         User user = userService.createUser(
                 dto.getUser().getFirstName(),
                 dto.getUser().getLastName()
         );
 
-
         Trainee trainee = new Trainee(dto.getDateOfBirth(), dto.getAddress(), user);
         traineeRepository.save(trainee);
 
-        log.info("Trainee registered with username: {}", user.getUserName());
-        return new TraineeCredentialsDto(user.getUserName(), userService.getRawPassword());
+        log.info("Trainee registered with username: {}", user.getUsername());
+        return new TraineeCredentialsDto(user.getUsername(), userService.getRawPassword());
     }
 
+
     @Override
+    @Transactional
     public TraineeProfileDto getTraineeProfile(String username, String password) {
         log.debug("Fetching profile for trainee: {}", username);
         userService.authenticate(username, password);
@@ -64,7 +75,7 @@ public class TraineeServiceImpl implements TraineeService {
 
         List<TrainerInfoDto> trainerDtos = trainee.getTrainers().stream()
                 .map(x -> new TrainerInfoDto(
-                        x.getUser().getUserName(),
+                        x.getUser().getUsername(),
                         x.getUser().getFirstName(),
                         x.getUser().getLastName(),
                         x.getSpecialization().getTrainingTypeName()
@@ -78,12 +89,13 @@ public class TraineeServiceImpl implements TraineeService {
                 user.getLastName(),
                 trainee.getDateOfBirth(),
                 trainee.getAddress(),
-                user.isActive(),
+                user.getIsActive(),
                 trainerDtos
         );
     }
 
     @Override
+    @Transactional
     public TraineeProfileDto updateProfile(TraineeProfileUpdateDto dto, String password) {
         log.info("Updating profile for trainee: {}", dto.getUsername());
         userService.authenticate(dto.getUsername(), password);
@@ -97,7 +109,7 @@ public class TraineeServiceImpl implements TraineeService {
         User user = trainee.getUser();
 
         //Username should be unchanged
-        if (!dto.getUsername().equals(user.getUserName())) {
+        if (!dto.getUsername().equals(user.getUsername())) {
             log.error("Username change attempt detected for: {}", dto.getUsername());
             throw new IllegalArgumentException("Username cannot be changed.");
         }
@@ -106,13 +118,13 @@ public class TraineeServiceImpl implements TraineeService {
         user.setLastName(dto.getLastName());
         if (dto.getDateOfBirth() != null) trainee.setDateOfBirth(dto.getDateOfBirth());
         if (dto.getAddress() != null) trainee.setAddress(dto.getAddress());
-        user.setActive(dto.getIsActive());
+        user.setIsActive(dto.getIsActive());
 
         log.info("Profile updated for trainee: {}", dto.getUsername());
 
         List<TrainerInfoDto> trainerDtos = trainee.getTrainers().stream()
                 .map(x -> new TrainerInfoDto(
-                        x.getUser().getUserName(),
+                        x.getUser().getUsername(),
                         x.getUser().getFirstName(),
                         x.getUser().getLastName(),
                         x.getSpecialization().getTrainingTypeName()
@@ -124,7 +136,7 @@ public class TraineeServiceImpl implements TraineeService {
                 user.getLastName(),
                 trainee.getDateOfBirth(),
                 trainee.getAddress(),
-                user.isActive(),
+                user.getIsActive(),
                 trainerDtos
         );
     }
@@ -159,12 +171,12 @@ public class TraineeServiceImpl implements TraineeService {
                     return new RuntimeException("Trainee not found");
                 });
 
-        if (Boolean.TRUE.equals(trainee.getUser().isActive()) == isActive) {
+        if (Boolean.TRUE.equals(trainee.getUser().getIsActive()) == isActive) {
             log.info("Trainee {} is already {}", username, isActive ? "active" : "inactive");
             return false; // No update needed
         }
 
-        trainee.getUser().setActive(isActive);
+        trainee.getUser().setIsActive(isActive);
         log.info("Active status set to {} for trainee: {}", isActive, username);
         return true;
     }
@@ -195,7 +207,7 @@ public class TraineeServiceImpl implements TraineeService {
 
         return trainers.stream()
                 .map(t -> new TrainerForTrainerListDto(
-                        t.getUser().getUserName(),
+                        t.getUser().getUsername(),
                         t.getUser().getFirstName(),
                         t.getUser().getLastName(),
                         t.getSpecialization().getTrainingTypeName()

@@ -29,12 +29,12 @@ public class UserServiceImpl implements UserService {
     @Override
     public User createUser(String firstName, String lastName) {
         List<String> existingUsernames = userRepository.findAll()
-                .stream().map(User::getUserName).toList();
+                .stream().map(User::getUsername).toList();
 
         String username;
         do {
             username = UsernamePasswordGenerator.generateUniqueUsername(firstName, lastName, existingUsernames);
-        } while (traineeRepository.existsByUsername(username) || trainerRepository.existsByUsername(username));
+        } while (traineeRepository.existsByUser_Username(username) || trainerRepository.existsByUser_Username(username));
 
         String rawPassword = UsernamePasswordGenerator.generateRandomPassword();
         String encodedPassword = passwordEncoder.encode(rawPassword);
@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService {
             e.printStackTrace();
         }
 
-        log.info("Created user: {} with password: {}", username, rawPassword);
+        log.info("Created user: {} ", username);
         return user;
     }
 
@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void setActiveStatus(String username, boolean isActive) {
         User user = getByUsername(username);
-        user.setActive(isActive);
+        user.setIsActive(isActive);
         userRepository.save(user);
         log.info("Set active status of {} to {}", username, isActive);
     }

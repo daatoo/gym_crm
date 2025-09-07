@@ -14,6 +14,7 @@ import com.gymcrm.entity.User;
 import com.gymcrm.repository.*;
 import com.gymcrm.service.TrainerService;
 import com.gymcrm.service.UserService;
+import com.gymcrm.util.UsernamePasswordGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,24 +37,27 @@ public class TrainerServiceImpl implements TrainerService {
     public TraineeCredentialsDto registerWithCredentials(TrainerCreateDto dto) {
         log.info("Registering trainer: {} {}", dto.getFirstName(), dto.getLastName());
 
-        User user = userService.createUser(
-                dto.getFirstName(),
-                dto.getLastName()
-        );
-        userRepository.save(user);
+        // Check if already a trainee
+        String attemptedUsername = UsernamePasswordGenerator.generateStaticUsername(
+                dto.getFirstName(), dto.getLastName());
+
+        if (traineeRepository.existsByUser_Username(attemptedUsername)) {
+            log.warn("User already registered as a trainee.");
+            throw new IllegalStateException("User already registered as a trainee.");
+        }
+
+        User user = userService.createUser(dto.getFirstName(), dto.getLastName());
 
         TrainingType specialization = trainingTypeRepository.findByTrainingTypeName(dto.getSpecialization())
-                .orElseThrow(() -> {
-                    log.error("Specialization not found: {}", dto.getSpecialization());
-                    return new RuntimeException("Specialization not found");
-                });
+                .orElseThrow(() -> new RuntimeException("Specialization not found"));
 
         Trainer trainer = new Trainer(specialization, user);
         trainerRepository.save(trainer);
 
-        log.info("Trainer registered successfully with username: {}", user.getUserName());
-        return new TraineeCredentialsDto(user.getUserName(), userService.getRawPassword());
+        log.info("Trainer registered with username: {}", user.getUsername());
+        return new TraineeCredentialsDto(user.getUsername(), userService.getRawPassword());
     }
+
 
     @Override
     public TrainerProfileDto getTrainerProfile(String username, String password) {
@@ -70,18 +74,18 @@ public class TrainerServiceImpl implements TrainerService {
 
         List<TraineeInfoDto> trainees = traineeList.stream()
                 .map(trainee -> new TraineeInfoDto(
-                        trainee.getUser().getUserName(),
+                        trainee.getUser().getUsername(),
                         trainee.getUser().getFirstName(),
                         trainee.getUser().getLastName()
                 )).toList();
 
         log.info("Trainer profile retrieved for username: {}", username);
         return new TrainerProfileDto(
-                trainer.getUser().getUserName(),
+                trainer.getUser().getUsername(),
                 trainer.getUser().getFirstName(),
                 trainer.getUser().getLastName(),
                 trainer.getSpecialization().getTrainingTypeName(),
-                trainer.getUser().isActive(),
+                trainer.getUser().getIsActive(),
                 trainees
         );
     }
@@ -101,8 +105,8 @@ public class TrainerServiceImpl implements TrainerService {
         User user = trainer.getUser();
 
         //Username should be unchanged
-        if (!dto.getUsername().equals(user.getUserName())) {
-            log.error("Attempted to change username from {} to {}", user.getUserName(), dto.getUsername());
+        if (!dto.getUsername().equals(user.getUsername())) {
+            log.error("Attempted to change username from {} to {}", user.getUsername(), dto.getUsername());
             throw new IllegalArgumentException("Username cannot be changed.");
         }
 
@@ -116,12 +120,12 @@ public class TrainerServiceImpl implements TrainerService {
                 });
 
         trainer.setSpecialization(specialization);
-        user.setActive(dto.getIsActive());
+        user.setIsActive(dto.getIsActive());
 
         List<Trainee> traineeList = traineeRepository.findAllByTrainers_User_Username(dto.getUsername());
         List<TraineeInfoDto> trainees = traineeList.stream()
                 .map(trainee -> new TraineeInfoDto(
-                        trainee.getUser().getUserName(),
+                        trainee.getUser().getUsername(),
                         trainee.getUser().getFirstName(),
                         trainee.getUser().getLastName()
                 )).toList();
@@ -129,11 +133,11 @@ public class TrainerServiceImpl implements TrainerService {
         log.info("Trainer profile updated for: {}", dto.getUsername());
 
         return new TrainerProfileDto(
-                trainer.getUser().getUserName(),
+                trainer.getUser().getUsername(),
                 trainer.getUser().getFirstName(),
                 trainer.getUser().getLastName(),
                 trainer.getSpecialization().getTrainingTypeName(),
-                trainer.getUser().isActive(),
+                trainer.getUser().getIsActive(),
                 trainees
         );
     }
@@ -150,12 +154,12 @@ public class TrainerServiceImpl implements TrainerService {
                     return new RuntimeException("User not found");
                 });
 
-        if (Boolean.TRUE.equals(user.isActive()) == isActive) {
+        if (Boolean.TRUE.equals(user.getIsActive()) == isActive) {
             log.info("Trainer {} is already {}", username, isActive ? "active" : "inactive");
             return false;
         }
 
-        user.setActive(isActive);
+        user.setIsActive(isActive);
         log.info("Trainer '{}' active status set to: {}", username, isActive);
         return true;
     }
@@ -178,7 +182,7 @@ public class TrainerServiceImpl implements TrainerService {
         List<TrainerForTrainerListDto> result = allTrainers.stream()
                 .filter(trainer -> !trainee.getTrainers().contains(trainer))
                 .map(trainer -> new TrainerForTrainerListDto(
-                        trainer.getUser().getUserName(),
+                        trainer.getUser().getUsername(),
                         trainer.getUser().getFirstName(),
                         trainer.getUser().getLastName(),
                         trainer.getSpecialization().getTrainingTypeName()

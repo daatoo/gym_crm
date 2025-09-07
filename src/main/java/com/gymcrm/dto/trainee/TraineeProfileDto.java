@@ -2,7 +2,7 @@ package com.gymcrm.dto.trainee;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.example.dto.trainer.TrainerInfoDto;
+import com.gymcrm.dto.trainer.TrainerInfoDto;
 
 import java.time.LocalDate;
 import java.util.List;

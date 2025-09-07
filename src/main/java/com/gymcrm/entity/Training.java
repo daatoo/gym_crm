@@ -1,49 +1,55 @@
 package com.gymcrm.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import java.time.Duration;
 import java.time.LocalDate;
 
-
-@Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
+@Data
+@Entity
+@Table(name = "training")
 public class Training {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "trainingid")
     private Long trainingId;
 
     @ManyToOne
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "trainee_id", nullable = false)
+    @JoinColumn(name = "traineeid", nullable = false)
     private Trainee trainee;
+
     @ManyToOne
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "trainer_id", nullable = false)
+    @JoinColumn(name = "trainerid", nullable = false)
     private Trainer trainer;
 
-    @Column(nullable = false)
+    @Column(name = "trainingname", nullable = false)
     private String trainingName;
 
     @ManyToOne
-    @JoinColumn(name = "training_type_id")
+    @JoinColumn(name = "trainingtypeid")
     private TrainingType trainingType;
 
-    @Column(nullable = false)
+    @Column(name = "trainingdate", nullable = false)
     private LocalDate trainingDate;
 
-    @Column(nullable = false)
+    @Column(name = "trainingduration", nullable = false)
     private Long trainingDuration;
 
-    public Training(Trainee trainee, Trainer trainer, String trainingName, TrainingType trainingType, LocalDate trainingDate, Long trainingDuration) {
+    public Training(
+            Trainee trainee,
+            Trainer trainer,
+            String trainingName,
+            TrainingType trainingType,
+            LocalDate trainingDate,
+            Long trainingDuration
+    ) {
         this.trainee = trainee;
         this.trainer = trainer;
         this.trainingName = trainingName;

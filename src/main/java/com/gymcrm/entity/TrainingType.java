@@ -1,6 +1,5 @@
 package com.gymcrm.entity;
 
-
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,16 +7,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @Entity
+@Table(name = "training_type")
 public class TrainingType {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "trainingtypeid")
     private long trainingTypeId;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "trainingtypename", nullable = false, unique = true)
     private String trainingTypeName;
 
-    public TrainingType(String trainingTypeName) {
+    public TrainingType(long l, String trainingTypeName) {
         this.trainingTypeName = trainingTypeName;
     }
 }

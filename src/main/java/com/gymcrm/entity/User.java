@@ -1,30 +1,34 @@
 package com.gymcrm.entity;
 
-import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
-@Table(name = "users")
-@Inheritance(strategy = InheritanceType.JOINED)
 @NoArgsConstructor
 @Data
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name = "users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private int userId;
+    private Long userId;
 
-    @Column(nullable = false)
+    @Column(name = "firstname", nullable = false, length = 55)
     private String firstName;
-    @Column(nullable = false)
+
+    @Column(name = "lastname", nullable = false, length = 55)
     private String lastName;
-    @Column(nullable = false, unique = true)
-    private String userName;
-    @Column(nullable = false)
+
+    @Column(name = "username", unique = true, length = 55)
+    private String username;
+
+    @Column(name = "password", nullable = false)
     private String password;
-    @Column(nullable = false)
-    private boolean isActive = true;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 
     public String getFullName() {
         return firstName + " " + lastName;
@@ -32,8 +36,9 @@ public class User {
 
     public User(String firstName, String lastName, String username, String password) {
         this.firstName = firstName;
-        this.lastName  = lastName;
-        this.userName  = username;
-        this.password  = password;
+        this.lastName = lastName;
+        this.username = username;
+        this.password = password;
+        this.isActive = true;
     }
 }

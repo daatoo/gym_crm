@@ -42,13 +42,13 @@ class TrainingServiceImplTest {
         MockitoAnnotations.openMocks(this);
 
         User trainerUser = new User("Trainer", "One", "trainer.one", "pass");
-        trainerUser.setActive(true);
+        trainerUser.setIsActive(true);
         trainer = new Trainer();
         trainer.setUser(trainerUser);
         trainer.setSpecialization(new TrainingType(1L, "Yoga"));
 
         User traineeUser = new User("Trainee", "One", "trainee.one", "pwd");
-        traineeUser.setActive(true);
+        traineeUser.setIsActive(true);
         trainee = new Trainee();
         trainee.setUser(traineeUser);
 

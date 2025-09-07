@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
+
 
 import java.time.LocalDate;
 import java.util.*;
@@ -43,7 +43,7 @@ class TrainerServiceImplTest {
         MockitoAnnotations.openMocks(this);
 
         user = new User("Jane", "Smith", "jane.smith", "encodedpass");
-        user.setActive(true);
+        user.setIsActive(true);
 
         trainingType = new TrainingType(1L, "Cardio");
 
@@ -101,12 +101,57 @@ class TrainerServiceImplTest {
     }
 
     @Test
-    void toggleActive_shouldUpdateActiveStatus() {
-        when(userService.authenticate("jane.smith", "pass")).thenReturn(user);
+    void toggleActive_shouldUpdateActiveStatus_fromFalseToTrue_returnsTrue() {
+        String username = "jane.smith";
+        String pwd = "pass";
+        User user = new User();
+        user.setUsername(username);
+        user.setIsActive(false);
 
-        trainerService.toggleActive("jane.smith", true, "pass");
+        // authenticate is called, but we don’t use its return; just let it pass
+        when(userService.authenticate(username, pwd)).thenReturn(user);
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
 
-        verify(userService).setActiveStatus("jane.smith", true);
+        boolean changed = trainerService.toggleActive(username, true, pwd);
+
+        assertTrue(changed);
+        assertEquals(true, user.getIsActive());
+        verify(userService).authenticate(username, pwd);
+        verify(userRepository).findByUsername(username);
+        verifyNoMoreInteractions(userRepository, userService);
+    }
+
+
+    @Test
+    void toggleActive_whenAlreadyActive_returnsFalse_andDoesNotChange() {
+        String username = "jane.smith";
+        String pwd = "pass";
+        User user = new User();
+        user.setUsername(username);
+        user.setIsActive(true); // already active
+
+        when(userService.authenticate(username, pwd)).thenReturn(user);
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+
+        boolean changed = trainerService.toggleActive(username, true, pwd);
+
+        assertFalse(changed);
+        assertEquals(true, user.getIsActive()); // unchanged
+        verify(userService).authenticate(username, pwd);
+        verify(userRepository).findByUsername(username);
+    }
+
+    @Test
+    void toggleActive_userNotFound_throwsRuntime() {
+        String username = "missing.user";
+        String pwd = "pass";
+
+        when(userService.authenticate(username, pwd)).thenReturn(new User());
+        when(userRepository.findByUsername(username)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> trainerService.toggleActive(username, true, pwd));
+        assertEquals("User not found", ex.getMessage());
     }
 
     @Test

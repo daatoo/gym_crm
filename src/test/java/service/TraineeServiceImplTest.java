@@ -78,7 +78,7 @@ class TraineeServiceImplTest {
     void testGetTraineeProfile_ShouldReturnProfile() {
         String username = "john.doe";
         User user = new User("John", "Doe", username, "hashed");
-        user.setActive(true);
+        user.setIsActive(true);
 
         Trainee trainee = new Trainee();
         trainee.setUser(user);
@@ -156,23 +156,37 @@ class TraineeServiceImplTest {
 
     @Test
     void testUpdateProfile_ShouldUpdateSuccessfully() {
+        // Arrange
         String username = "john.doe";
         TraineeProfileUpdateDto dto = new TraineeProfileUpdateDto();
         dto.setUsername(username);
+        dto.setFirstName("John");
+        dto.setLastName("Doe");
+        dto.setIsActive(true);
         dto.setAddress("New Address");
         dto.setDateOfBirth(LocalDate.of(1995, 1, 1));
 
         User user = new User();
+        user.setUsername(username);
+        user.setIsActive(false);
+
         Trainee trainee = new Trainee();
         trainee.setUser(user);
 
         when(userService.authenticate(eq(username), anyString())).thenReturn(user);
         when(traineeRepository.findByUsername(username)).thenReturn(Optional.of(trainee));
+        when(traineeRepository.save(any(Trainee.class))).thenAnswer(inv -> inv.getArgument(0));
 
+        // Act
         TraineeProfileDto result = traineeService.updateProfile(dto, "pass");
 
+        // Assert
         assertNotNull(result);
         assertEquals("New Address", result.getAddress());
+        assertEquals(LocalDate.of(1995, 1, 1), result.getDateOfBirth());
+        assertEquals(true, result.getIsActive());
+        assertEquals("John", result.getFirstName());
+        assertEquals("Doe", result.getLastName());
     }
 
 
@@ -232,8 +246,8 @@ class TraineeServiceImplTest {
     void testToggleActive_ShouldUpdateIsActiveToFalse() {
         String username = "john.doe";
         User user = new User();
-        user.setUserName(username);
-        user.setActive(true);
+        user.setUsername(username);
+        user.setIsActive(true);
 
         Trainee trainee = new Trainee();
         trainee.setUser(user);
@@ -245,7 +259,7 @@ class TraineeServiceImplTest {
         traineeService.toggleActive(username, false, "password");
 
         // Assert
-        assertFalse(user.isActive()); // confirm value updated
+        assertFalse(user.getIsActive()); // confirm value updated
         verify(traineeRepository, never()).delete(any()); // explicitly confirm delete NOT called
     }
 

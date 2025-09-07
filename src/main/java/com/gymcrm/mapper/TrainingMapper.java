@@ -1,6 +1,5 @@
 package com.gymcrm.mapper;
 
-
 import com.gymcrm.dto.training.TrainingDto;
 import com.gymcrm.entity.Training;
 import org.springframework.stereotype.Component;
