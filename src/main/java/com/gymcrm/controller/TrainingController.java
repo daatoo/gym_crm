@@ -1,5 +1,6 @@
 package com.gymcrm.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,16 +21,13 @@ public class TrainingController {
     private final TrainingService trainingService;
 
     @PostMapping("/add")
+    @Operation(summary = "Add a new training (authentication required)")
     public ResponseEntity<String> addTraining(
             @Valid @RequestBody TrainingAddDto dto,
             @RequestParam String password
     ) {
-        try {
-            trainingService.addTraining(dto, password);
-            return ResponseEntity.ok("Training successfully added");
-        } catch (RuntimeException e) {
-            log.error("Failed to add training: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
+        log.info("Adding training for trainee: {} by trainer: {}", dto.getTraineeUsername(), dto.getTrainerUsername());
+        trainingService.addTraining(dto, password);
+        return ResponseEntity.ok("Training successfully added");
     }
 }
