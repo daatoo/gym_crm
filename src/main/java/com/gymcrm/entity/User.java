@@ -1,20 +1,44 @@
 package com.gymcrm.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
-@Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
+@Data
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name = "users")
+public class User {
 
-public abstract class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "firstname", nullable = false, length = 55)
     private String firstName;
+
+    @Column(name = "lastname", nullable = false, length = 55)
     private String lastName;
-    private String userName;
+
+    @Column(name = "username", unique = true, length = 55)
+    private String username;
+
+    @Column(name = "password", nullable = false)
     private String password;
-    private int userId;
-    private boolean isActive = true;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+
+    public User(String firstName, String lastName, String username, String password) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.username = username;
+        this.password = password;
+        this.isActive = true;
+    }
 }

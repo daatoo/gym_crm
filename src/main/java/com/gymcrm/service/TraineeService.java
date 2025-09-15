@@ -1,17 +1,24 @@
 package com.gymcrm.service;
 
-import com.gymcrm.entity.Trainee;
+import com.gymcrm.dto.trainee.*;
+import com.gymcrm.dto.trainer.TrainerForTrainerListDto;
+import com.gymcrm.dto.training.TraineeTrainingRequestDto;
+import com.gymcrm.dto.training.TraineeTrainingResponseDto;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface TraineeService {
+    TraineeCredentialsDto registerWithCredentials(TraineeCreateDto dto);
 
-    Trainee createTrainee(Trainee trainee);
+    TraineeProfileDto getTraineeProfile(String username, String password);
 
-    Trainee updateTrainee(Trainee trainee);
+    TraineeProfileDto updateProfile(TraineeProfileUpdateDto dto, String password);
 
-    boolean deleteTrainee(int userId);
+    void deleteByUsername(String username, String password);
 
-    Optional<Trainee> getTrainee(int userId);
+    boolean toggleActive(String username, boolean isActive, String password);
 
+    List<TrainerForTrainerListDto> updateTraineeTrainers(TraineeTrainerUpdateDto dto, String password);
+
+    List<TraineeTrainingResponseDto> getTraineeTrainingsList(TraineeTrainingRequestDto dto, String password);
 }

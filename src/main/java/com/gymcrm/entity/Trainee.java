@@ -1,21 +1,49 @@
 package com.gymcrm.entity;
 
-import lombok.Getter;
+import jakarta.persistence.*;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
 @NoArgsConstructor
-public class Trainee extends User{
-    private String dateOfBirth;
+@Data
+@Table(name = "trainee") // Ensures matching DB table name
+public class Trainee {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "traineeid") // Match DB naming convention
+    private Long traineeId;
+
+    @Column(name = "dateofbirth")
+    private LocalDate dateOfBirth;
+
+    @Column(name = "address")
     private String address;
 
-    public Trainee(String firstName,String lastName,  String password,String userName, int id,String dateOfBirth, String address) {
-        super(firstName,lastName,userName,password,id,true);
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "userid", nullable = false, unique = true) // Match DB
+    private User user;
 
-        this.address = address;
+    @ManyToMany
+    @JoinTable(
+            name = "trainee_trainer",
+            joinColumns = @JoinColumn(name = "traineeid"),
+            inverseJoinColumns = @JoinColumn(name = "trainerid")
+    )
+    private List<Trainer> trainers = new ArrayList<>();
+
+    public Trainee(LocalDate dateOfBirth, String address, User user) {
         this.dateOfBirth = dateOfBirth;
+        this.address = address;
+        this.user = user;
     }
-}
 
+
+
+
+}

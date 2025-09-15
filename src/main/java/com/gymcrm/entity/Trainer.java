@@ -1,22 +1,45 @@
 package com.gymcrm.entity;
 
-import lombok.Getter;
+import jakarta.persistence.*;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
+import java.util.Objects;
+
 @NoArgsConstructor
+@Data
+@Entity
+@Table(name = "trainer")
+public class Trainer {
 
-public class Trainer extends User{
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "trainerid")
+    private Long trainerId;
 
-    private String specialization;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "trainingtypeid", nullable = false)
+    private TrainingType specialization;
 
-    public Trainer(String firstName, String lastName, String username,Integer userId, String password, String specialization) {
-        super(firstName,lastName,username,password,userId,true);
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "userid", nullable = false, unique = true)
+    private User user;
 
-
+    public Trainer(TrainingType specialization, User user) {
         this.specialization = specialization;
+        this.user = user;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Trainer)) return false;
+        Trainer that = (Trainer) o;
+        return getTrainerId() != null && getTrainerId().equals(that.getTrainerId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getTrainerId());
     }
 }
-
