@@ -1,21 +1,54 @@
 package com.gymcrm.entity;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Duration;
+import java.time.LocalDate;
+
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Training {
-    private int traineeId;
-    private int trainerId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long trainingId;
+
+    @ManyToOne
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "trainee_id", nullable = false)
+    private Trainee trainee;
+    @ManyToOne
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "trainer_id", nullable = false)
+    private Trainer trainer;
+
+    @Column(nullable = false)
     private String trainingName;
-    private String TrainingDate;
-    private Duration TrainingDuration;
-    public String trainingType;
+
+    @ManyToOne
+    @JoinColumn(name = "training_type_id")
+    private TrainingType trainingType;
+
+    @Column(nullable = false)
+    private LocalDate trainingDate;
+
+    @Column(nullable = false)
+    private Long trainingDuration;
+
+    public Training(Trainee trainee, Trainer trainer, String trainingName, TrainingType trainingType, LocalDate trainingDate, Long trainingDuration) {
+        this.trainee = trainee;
+        this.trainer = trainer;
+        this.trainingName = trainingName;
+        this.trainingType = trainingType;
+        this.trainingDate = trainingDate;
+        this.trainingDuration = trainingDuration;
+    }
 }

@@ -1,70 +1,102 @@
 package com.gymcrm.service.impl;
 
-import com.gymcrm.dao.impl.TraineeDaoImpl;
-import com.gymcrm.dao.impl.TrainerDaoImpl;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import com.gymcrm.entity.User;
+import com.gymcrm.repository.TraineeRepository;
+import com.gymcrm.repository.TrainerRepository;
+import com.gymcrm.repository.UserRepository;
 import com.gymcrm.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.gymcrm.util.UsernamePasswordGenerator;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
-    private TrainerDaoImpl trainerDao;
-    private TraineeDaoImpl traineeDao;
-
-    public UserServiceImpl(TrainerDaoImpl trainerDao, TraineeDaoImpl traineeDao) {
-    }
-
-    @Autowired
-    public void setTrainerDao(TrainerDaoImpl trainerDao) {
-        this.trainerDao = trainerDao;
-    }
-
-    @Autowired
-    public void setTraineeDao(TraineeDaoImpl traineeDao) {
-        this.traineeDao = traineeDao;
-    }
-
-    private static int traineeId = 1;
-    private static int trainerId = 1;
+    private String lastRawPassword;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TraineeRepository traineeRepository;
+    private final TrainerRepository trainerRepository;
 
     @Override
-    public boolean alreadyUsed(String username){
-        return this.traineeDao.existsByName(username) || this.trainerDao.existsByName(username);
-    }
-    @Override
-    public String generateUserName(String firstName, String lastName) {
-        String temp = firstName + "." + lastName;
-        String generated = temp;
-        int i = 1;
+    public User createUser(String firstName, String lastName) {
+        List<String> existingUsernames = userRepository.findAll()
+                .stream().map(User::getUserName).toList();
 
-        while (alreadyUsed(generated)) {
-            generated = temp + i;
-            i++;
+        String username;
+        do {
+            username = UsernamePasswordGenerator.generateUniqueUsername(firstName, lastName, existingUsernames);
+        } while (traineeRepository.existsByUsername(username) || trainerRepository.existsByUsername(username));
+
+        String rawPassword = UsernamePasswordGenerator.generateRandomPassword();
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+
+        this.lastRawPassword = rawPassword;
+
+        User user = new User(firstName, lastName, username, encodedPassword);
+        userRepository.save(user);
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter("generated-credentials.txt", true))) {
+            writer.println("Username: " + username + " | Password: " + rawPassword);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return generated;
+
+        log.info("Created user: {} with password: {}", username, rawPassword);
+        return user;
+    }
+
+
+    @Override
+    public String getRawPassword() {
+        return lastRawPassword;
     }
 
     @Override
-    public synchronized Integer getTrainerId() {
-        return trainerId++;
-    }
-    @Override
-    public synchronized Integer getTraineeId() {
-        return traineeId++;
-    }
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        log.info("Received request to change password for: {}", username);
 
-    @Override
-    public String generatePassword() {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        int password_length = 10;
-        SecureRandom random = new SecureRandom();
-        StringBuilder password = new StringBuilder(password_length);
-        for (int i = 0; i < password_length; i++) {
-            password.append(characters.charAt(random.nextInt(characters.length())));
+        User user = getByUsername(username);
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            log.warn("Incorrect old password for: {}", username);
+            throw new IllegalArgumentException("Old password does not match.");
         }
-        return password.toString();
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password changed for user: {}", username);
     }
+
+    @Override
+    public void setActiveStatus(String username, boolean isActive) {
+        User user = getByUsername(username);
+        user.setActive(isActive);
+        userRepository.save(user);
+        log.info("Set active status of {} to {}", username, isActive);
+    }
+
+
+    @Override
+    public User getByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Override
+    public User authenticate(String username, String password) {
+        return userRepository.findByUsername(username)
+                .filter(u -> passwordEncoder.matches(password, u.getPassword()))
+                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+    }
+
 
 }
