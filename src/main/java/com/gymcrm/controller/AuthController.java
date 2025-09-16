@@ -1,68 +1,86 @@
 package com.gymcrm.controller;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.gymcrm.dto.login.PasswordChangeDto;
-import com.gymcrm.entity.User;
+import com.gymcrm.security.JwtService;
 import com.gymcrm.service.UserService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Authentication", description = "User authentication and password change")
+@Tag(name = "Authentication", description = "Login to get JWT and change password")
 public class AuthController {
 
-    private final UserService userService;
-    private final MeterRegistry meterRegistry;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final UserService userService; // for password change
 
-    @GetMapping("/login")
-    @Operation(summary = "Login (returns 200 if credentials are valid)")
-    public ResponseEntity<String> login(
-            @RequestParam String username,
-            @RequestParam String password
-    ) {
-        log.info("Login attempt for user: {}", username);
-        // Timer for login latency
-        Timer.Sample sample = Timer.start(meterRegistry);
-        try {
+    // ---------- LOGIN (JWT) ----------
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Login with username/password and get a JWT")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest body) {
+        log.info("Login attempt for user: {}", body.getUsername());
 
-            User user = userService.authenticate(username, password); // may throw -> handled by @ControllerAdvice
-            log.info("Login successful for user: {}", user.getUsername());
-            // Counter (success)
-            meterRegistry.counter(
-                    "gymcrm_auth_login_attempts",
-                    "result", "success"
-            ).increment();
-            return ResponseEntity.ok("Login successful");
-        }catch (Exception ex) {
-            // Counter (failure)
-            meterRegistry.counter(
-                    "gymcrm_auth_login_attempts",
-                    "result", "failure"
-            ).increment();
-            throw ex;
-        }finally {
-            sample.stop(Timer.builder("gymcrm_auth_login_latency_seconds")
-                    .description("Login latency")
-                    .tag("controller", "AuthController")
-                    .register(meterRegistry));
-        }
+        // Triggers your LockingAuthenticationProvider + brute-force checks
+        Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(body.getUsername(), body.getPassword())
+        );
+
+        // Put any extra claims you want in the token (e.g., roles)
+        List<String> roles = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+
+        String token = jwtService.generateToken(auth.getName(), Map.of("roles", roles));
+
+        log.info("Login successful for user: {}", auth.getName());
+        return ResponseEntity.ok(new LoginResponse("Bearer", token, auth.getName(), roles));
     }
 
-    @PutMapping("/password")
+    // ---------- CHANGE PASSWORD ----------
+    @PutMapping(value = "/password", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Change password")
     public ResponseEntity<String> changePassword(@Valid @RequestBody PasswordChangeDto dto) {
         log.info("Password change requested for user: {}", dto.getUsername());
-        userService.changePassword(dto.getUsername(), dto.getOldPassword(), dto.getNewPassword()); // may throw -> handled globally
+        userService.changePassword(dto.getUsername(), dto.getOldPassword(), dto.getNewPassword());
         log.info("Password changed for user: {}", dto.getUsername());
         return ResponseEntity.ok("Password changed successfully");
+    }
+
+
+    // ===== DTOs =====
+    @Data
+    public static class LoginRequest {
+        @NotBlank
+        private String username;
+        @NotBlank
+        private String password;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class LoginResponse {
+        private String tokenType;      // e.g. "Bearer"
+        private String token;          // null in /me
+        private String username;
+        private List<String> roles;
     }
 }

@@ -1,114 +1,117 @@
 package controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.gymcrm.controller.AuthController;
 import com.gymcrm.dto.login.PasswordChangeDto;
-import com.gymcrm.entity.User;
-import com.gymcrm.service.UserService;
 import com.gymcrm.util.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import com.gymcrm.security.JwtService;
+import com.gymcrm.service.UserService;
+
+import java.util.List;
+
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class AuthControllerTest {
 
-    private AuthController authController;
-
-    @Mock
-    private UserService userService;
-
-    private MeterRegistry meterRegistry;
+    @Mock private AuthenticationManager authenticationManager;
+    @Mock private JwtService jwtService;
+    @Mock private UserService userService;
 
     private MockMvc mockMvc;
     private ObjectMapper om;
 
     @BeforeEach
-    void setUp() {
+    void setup() {
         MockitoAnnotations.openMocks(this);
 
-        meterRegistry = new SimpleMeterRegistry();               // <-- add this
-        authController = new AuthController(userService, meterRegistry); // <-- pass it in
+        var controller = new AuthController(authenticationManager, jwtService, userService);
 
         mockMvc = MockMvcBuilders
-                .standaloneSetup(authController)
+                .standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
         om = new ObjectMapper();
     }
 
+    // ---------- /auth/login ----------
+
+
+
     @Test
-    void login_shouldReturnSuccessResponse_whenCredentialsAreValid() {
-        User user = new User();
-        user.setUsername("john.doe");
-        when(userService.authenticate("john.doe", "password")).thenReturn(user);
+    void login_returns400_whenValidationFails() throws Exception {
+        // missing password
+        var body = """
+            {"username":"john.doe"}
+        """;
 
-        ResponseEntity<String> response = authController.login("john.doe", "password");
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().string(containsString("password")));
+    }
 
-        assertEquals(200, response.getStatusCodeValue());
-        assertEquals("Login successful", response.getBody());
+    // ---------- /auth/password ----------
 
-        // Optional: assert custom metrics
-        assertEquals(1.0,
-                meterRegistry.find("gymcrm_auth_login_attempts")
-                        .tags("result", "success")
-                        .counter().count(),
-                1e-9);
+    @Test
+    void changePassword_returns200_whenValid() throws Exception {
+        var dto = new PasswordChangeDto("john.doe", "oldPass", "newPass");
+        doNothing().when(userService).changePassword(dto.getUsername(), dto.getOldPassword(), dto.getNewPassword());
 
-        Timer t = meterRegistry.find("gymcrm_auth_login_latency_seconds")
-                .tag("controller", "AuthController")
-                .timer();
-        assertNotNull(t);
-        assertEquals(1, t.count());
+        mockMvc.perform(put("/auth/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Password changed successfully"));
     }
 
     @Test
-    void login_shouldThrow_whenCredentialsAreInvalid() {
-        when(userService.authenticate("john.doe", "wrong"))
-                .thenThrow(new RuntimeException("Invalid username or password"));
+    void changePassword_returns400_whenOldPasswordWrong() throws Exception {
+        var dto = new PasswordChangeDto("john.doe", "wrongOld", "newPass");
 
-        RuntimeException ex =
-                assertThrows(RuntimeException.class, () -> authController.login("john.doe", "wrong"));
-        assertEquals("Invalid username or password", ex.getMessage());
-
-        // Optional: assert failure counter
-        assertEquals(1.0,
-                meterRegistry.find("gymcrm_auth_login_attempts")
-                        .tags("result", "failure")
-                        .counter().count(),
-                1e-9);
-    }
-
-    @Test
-    void changePassword_shouldReturnSuccessResponse_whenValid() {
-        PasswordChangeDto dto = new PasswordChangeDto("john.doe", "oldPass", "newPass");
-        doNothing().when(userService).changePassword("john.doe", "oldPass", "newPass");
-
-        ResponseEntity<String> response = authController.changePassword(dto);
-
-        assertEquals(200, response.getStatusCodeValue());
-        assertEquals("Password changed successfully", response.getBody());
-    }
-
-    @Test
-    void changePassword_shouldThrow_whenChangeFails_unitStyle() {
-        PasswordChangeDto dto = new PasswordChangeDto("john.doe", "wrongOld", "newPass");
         doThrow(new IllegalArgumentException("Old password does not match."))
                 .when(userService)
                 .changePassword(dto.getUsername(), dto.getOldPassword(), dto.getNewPassword());
 
-        IllegalArgumentException ex =
-                assertThrows(IllegalArgumentException.class, () -> authController.changePassword(dto));
-        assertTrue(ex.getMessage().contains("Old password does not match."));
+        mockMvc.perform(put("/auth/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("Old password does not match")));
+    }
+
+    @Test
+    void changePassword_returns400_whenValidationFails() throws Exception {
+        // missing username
+        var invalid = """
+            {"oldPassword":"a","newPassword":"b"}
+        """;
+
+        mockMvc.perform(put("/auth/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalid))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("username")));
     }
 }
