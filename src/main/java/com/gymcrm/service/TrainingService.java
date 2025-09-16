@@ -1,12 +1,26 @@
 package com.gymcrm.service;
 
-import com.gymcrm.entity.Training;
+import com.gymcrm.dto.training.TrainingAddDto;
+import com.gymcrm.dto.training.TrainingCreateDto;
+import com.gymcrm.dto.training.TrainingDto;
 
-import java.util.Optional;
+import java.time.LocalDate;
+import java.util.List;
 
 public interface TrainingService {
 
-    Training createTraining(Training training);
+    void addTraining(TrainingAddDto dto, String password);
 
-    Optional<Training> getTraining(int traineeId, int trainerId);
+
+    List<TrainingDto> getTrainingsForTrainee(String username, String password);
+
+    List<TrainingDto> getTrainingsForTrainer(String username, String password);
+
+    List<TrainingDto> getTrainingsForTrainee(String username, String password,
+                                             LocalDate fromDate, LocalDate toDate,
+                                             String trainerName, String trainingType);
+
+    List<TrainingDto> getTrainingsForTrainer(String username, String password,
+                                             LocalDate fromDate, LocalDate toDate,
+                                             String traineeName);
 }
